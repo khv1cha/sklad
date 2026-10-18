@@ -1,5 +1,5 @@
 // Кэш приложения: журнал открывается и без интернета (распознаванию речи интернет всё равно нужен)
-const CACHE = 'sklad-v2';
+const CACHE = 'sklad-v3';
 const FILES = ['./', 'index.html', 'manifest.json', 'icon-192.png', 'icon-512.png', 'icon-180.png'];
 
 self.addEventListener('install', e => {
