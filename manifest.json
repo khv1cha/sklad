@@ -1,16 +1,29 @@
 {
-  "name": "Голосовой склад",
-  "short_name": "Склад",
-  "description": "Учёт закупок голосом: товар, количество, цена",
+  "name": "Голосовая касса",
+  "short_name": "Касса",
+  "description": "Голосовой учёт закупок и продаж: суммы по позициям, история за день, неделю и месяц",
   "lang": "ru",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#eef1f4",
-  "theme_color": "#e0a100",
+  "background_color": "#f2f5fb",
+  "theme_color": "#0057b7",
   "icons": [
-    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
-    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
   ]
 }

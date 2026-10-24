@@ -1,813 +1,668 @@
 <!doctype html>
-<html lang="ru">
-<head>
-<meta charset="utf-8">
+<html lang="ru"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Голосовой склад</title>
-<link rel="manifest" href="manifest.json">
-<link rel="icon" href="icon-192.png">
-<link rel="apple-touch-icon" href="icon-180.png">
-<meta name="theme-color" content="#e0a100">
-<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0057b7">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Склад">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Касса">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='32' fill='%230057b7'/%3E%3Crect y='32' width='64' height='32' fill='%23ffd700'/%3E%3C/svg%3E">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}</style>
+<title>Голосовая касса</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600&family=JetBrains+Mono:wght@400;600&family=Unbounded:wght@600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700;800&family=Unbounded:wght@600;800&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
-/* Layout: одна колонка-«накладная»: переключатель Закупка/Продажа, пульт записи, журнал с итогами */
+/* Layout: iPhone-first one-hand app. Blue header band over a yellow stripe (flag), big mode switch, big mic, sticky total+save bar, two-tab bar. */
 :root{
-  --bg:#eef1f4; --surface:#ffffff; --ink:#18212b; --muted:#5d6b7a; --line:#d5dce4;
-  --accent:#e0a100; --accent-ink:#1d1600; --sell:#16805a; --sell-ink:#ffffff;
-  --rec:#d6392f; --ok:#1f8a5b; --ok-bg:#e3f4ec; --warn:#a85a00; --warn-bg:#fff1d9;
-  --f-display:"Unbounded","Segoe UI",system-ui,sans-serif;
-  --f-body:"Golos Text","Segoe UI",system-ui,sans-serif;
-  --f-num:"JetBrains Mono",Consolas,ui-monospace,monospace;
-  color-scheme:light;
+  --bg:#f2f5fb; --surface:#ffffff; --sunk:#e6ecf6; --line:#d3dcec;
+  --ink:#0d1b33; --muted:#5b6b86;
+  --blue:#0057b7; --blue-ink:#ffffff; --blue-soft:#dbe8f8;
+  --yellow:#ffd700; --yellow-ink:#1a1500; --yellow-soft:#fff6c2; --yellow-text:#8a6d00;
+  --danger:#c0261b; --danger-soft:#fde4e1;
+  --f-display:"Unbounded","Golos Text",system-ui,sans-serif;
+  --f-body:"Golos Text",-apple-system,system-ui,"Segoe UI",Roboto,sans-serif;
+  --r:18px;
 }
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --bg:#12171d; --surface:#1a2129; --ink:#e6ebf0; --muted:#93a1b0; --line:#2b3540;
-  --accent:#f0b429; --accent-ink:#1d1600; --sell:#3cbf8a; --sell-ink:#06150f;
-  --rec:#ef5a50; --ok:#45c08a; --ok-bg:#163025; --warn:#f0b429; --warn-bg:#2c2416; color-scheme:dark}}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0a1222; --surface:#121d33; --sunk:#1a2742; --line:#26365a;
+  --ink:#eaf0fb; --muted:#9aa9c4;
+  --blue:#2f80e8; --blue-ink:#ffffff; --blue-soft:#15294a;
+  --yellow:#ffd500; --yellow-ink:#1a1500; --yellow-soft:#3a3210; --yellow-text:#ffd84d;
+  --danger:#ff7b6e; --danger-soft:#3d1c1a; color-scheme:dark}}
 :root[data-theme="dark"]{
-  --bg:#12171d; --surface:#1a2129; --ink:#e6ebf0; --muted:#93a1b0; --line:#2b3540;
-  --accent:#f0b429; --accent-ink:#1d1600; --sell:#3cbf8a; --sell-ink:#06150f;
-  --rec:#ef5a50; --ok:#45c08a; --ok-bg:#163025; --warn:#f0b429; --warn-bg:#2c2416; color-scheme:dark}
+  --bg:#0a1222; --surface:#121d33; --sunk:#1a2742; --line:#26365a;
+  --ink:#eaf0fb; --muted:#9aa9c4;
+  --blue:#2f80e8; --blue-ink:#ffffff; --blue-soft:#15294a;
+  --yellow:#ffd500; --yellow-ink:#1a1500; --yellow-soft:#3a3210; --yellow-text:#ffd84d;
+  --danger:#ff7b6e; --danger-soft:#3d1c1a; color-scheme:dark}
 
-*{box-sizing:border-box}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 [hidden]{display:none!important}
-html,body{margin:0}
-body{--mode:var(--accent);--mode-ink:var(--accent-ink);
-  background:var(--bg);color:var(--ink);font:15px/1.5 var(--f-body);
-  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
-  padding-block:max(20px,env(safe-area-inset-top,0px)) max(40px,env(safe-area-inset-bottom,0px))}
-body[data-mode="sell"]{--mode:var(--sell);--mode-ink:var(--sell-ink)}
-body[data-mode="buy"] [data-only="sell"], body[data-mode="sell"] [data-only="buy"]{display:none!important}
-.wrap{max-width:860px;margin:0 auto;display:grid;gap:20px}
-h1,h2{font-family:var(--f-display);margin:0;text-wrap:balance;letter-spacing:-.01em}
-h1{font-size:1.45rem}
-h2{font-size:1.05rem}
-.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
-.muted{color:var(--muted)}
-.label{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
-button,input,select,textarea{font:inherit;color:inherit}
-button{cursor:pointer}
-:focus-visible{outline:3px solid var(--mode);outline-offset:2px}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.45;
+  padding-block:0 calc(150px + env(safe-area-inset-bottom,0px))}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--blue)}
+.pad{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+.num{font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)} .small{font-size:13px}
 
-header{display:flex;align-items:end;justify-content:space-between;gap:12px;flex-wrap:wrap}
-header p{margin:4px 0 0;color:var(--muted)}
+/* header = flag */
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5}
+.hblue{background:var(--blue);color:#fff;padding-block:14px 12px}
+.hblue .wrap{flex-direction:row;align-items:center;justify-content:space-between;gap:10px}
+.hyellow{height:8px;background:var(--yellow)}
+h1{font-family:var(--f-display);font-weight:800;font-size:19px;margin:0;letter-spacing:-.01em}
+.store{font-size:12px;opacity:.85;text-align:right}
+main{padding-block:16px}
+h2{font-family:var(--f-display);font-weight:600;font-size:14px;margin:0}
 
-/* Переключатель режима */
-.modes{display:grid;grid-template-columns:1fr 1fr;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:5px;gap:5px}
-.modes button{border:0;border-radius:10px;padding:12px;background:transparent;font-family:var(--f-display);font-size:.95rem;font-weight:600;color:var(--muted)}
-.modes button[aria-selected="true"]{background:var(--mode);color:var(--mode-ink)}
+/* mode switch */
+.mode{display:grid;grid-template-columns:1fr 1fr;gap:6px;background:var(--sunk);padding:5px;border-radius:999px}
+.mode button{border:0;border-radius:999px;padding:14px 8px;font:700 17px var(--f-body);background:none;color:var(--muted);cursor:pointer}
+.mode button[data-v=buy][aria-pressed=true]{background:var(--blue);color:var(--blue-ink)}
+.mode button[data-v=sell][aria-pressed=true]{background:var(--yellow);color:var(--yellow-ink)}
 
-.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;display:grid;gap:16px;min-width:0}
-.panel>*{min-width:0}
-.tools select{flex:0 1 auto;min-width:0}
+/* tiles */
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.tile{background:var(--surface);border-radius:14px;padding:10px 12px;min-width:0;border:1px solid var(--line)}
+.tile .lbl{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.tile .val{font-weight:800;font-size:16px;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile .cnt{font-size:12px;color:var(--muted)}
 
-/* Пульт записи */
-.rec{display:grid;grid-template-columns:auto 1fr;gap:20px;align-items:center}
-@media (max-width:560px){.rec{grid-template-columns:1fr;justify-items:center;text-align:center}}
-.mic{width:112px;height:112px;border-radius:50%;border:0;background:var(--mode);color:var(--mode-ink);
-  display:grid;place-items:center;box-shadow:0 6px 18px rgba(0,0,0,.18);transition:transform .15s}
-.mic:hover{transform:scale(1.04)}
-.mic svg{width:44px;height:44px}
-.mic.on{background:var(--rec);color:#fff;animation:pulse 1.4s infinite}
-@keyframes pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--rec) 55%,transparent)}70%{box-shadow:0 0 0 22px transparent}100%{box-shadow:0 0 0 0 transparent}}
-@media (prefers-reduced-motion:reduce){.mic.on{animation:none}.mic{transition:none}}
-.rec-text{display:grid;gap:6px;min-width:0}
-.status{font-weight:600}
-.example{color:var(--muted);font-size:.92rem}
-.example b{color:var(--ink);font-weight:500}
-.transcript{min-height:3.2em;padding:12px 14px;border-radius:10px;background:var(--bg);border:1px dashed var(--line);white-space:pre-wrap;overflow-wrap:anywhere}
-.transcript .interim{color:var(--muted)}
+/* mic block */
+.micbox{background:var(--surface);border-radius:var(--r);padding:18px 16px;display:flex;flex-direction:column;align-items:center;gap:12px;border:1px solid var(--line)}
+.microw{display:flex;justify-content:space-between;width:100%;align-items:center;gap:8px}
+.mic{width:116px;height:116px;border-radius:50%;border:0;background:var(--blue);color:#fff;display:grid;place-items:center;cursor:pointer;
+  box-shadow:0 0 0 8px var(--yellow)}
+.mode-sell .mic{background:var(--yellow);color:var(--yellow-ink);box-shadow:0 0 0 8px var(--blue)}
+.mic svg{width:46px;height:46px}
+.mic.on{animation:pulse 1.2s ease-in-out infinite;background:var(--danger);color:#fff}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+@media (prefers-reduced-motion:reduce){.mic.on{animation:none}}
+.miclbl{font-weight:600;text-align:center}
+.hint{font-size:14px;color:var(--ink);background:var(--yellow-soft);border-radius:12px;padding:10px 12px;width:100%}
+textarea{width:100%;min-height:90px;resize:vertical;border:1px solid var(--line);border-radius:14px;background:var(--bg);color:var(--ink);font:16px/1.4 var(--f-body);padding:12px}
+input,select{font:16px var(--f-body);color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 10px;min-width:0}
+input[type=date]{padding:6px 10px;font-size:15px}
+:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
 
-.typed{display:flex;gap:8px;flex-wrap:wrap}
-.typed textarea{flex:1 1 260px;min-width:0;resize:vertical;min-height:44px;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface)}
-.row-ctl{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-.btn{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:9px 14px;font-weight:500}
-.btn:hover{border-color:var(--muted)}
-.btn.primary{background:var(--mode);border-color:var(--mode);color:var(--mode-ink);font-weight:600}
-.btn.ghost{border-color:transparent;background:transparent;color:var(--muted)}
-.btn.small{padding:5px 10px;font-size:.88rem}
-input[type=date],input[type=search],select,.field{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:8px 10px}
+.chip{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:8px 14px;font:600 14px var(--f-body);cursor:pointer}
+.chip.danger{color:var(--danger);border-color:var(--danger)}
 
-/* Предпросмотр распознанного */
-.scroll{overflow-x:auto;min-width:0}
-table{width:100%;border-collapse:collapse}
-th{text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
-td{padding:8px;border-bottom:1px solid var(--line);vertical-align:middle}
-td.r,th.r{text-align:right}
-.preview input,.preview select{width:100%;min-width:60px;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:6px 8px}
-.preview input.n{font-family:var(--f-num);text-align:right;min-width:72px}
-.preview td:first-child input{min-width:140px}
-.sale-meta{display:grid;grid-template-columns:2fr 1.3fr 1fr;gap:10px;align-items:end;margin-bottom:12px}
-.sale-meta label{display:grid;gap:4px;min-width:0}
-.sale-meta .field{width:100%;min-width:0;background:var(--bg)}
-.draft-total{display:flex;justify-content:space-between;align-items:baseline;padding:10px 2px 0;font-weight:600}
-.unparsed{background:var(--warn-bg);color:var(--warn);border-radius:10px;padding:10px 14px;font-size:.92rem}
-.unparsed b{color:var(--ink);font-weight:500}
+/* lines */
+.lineshead{display:flex;justify-content:space-between;align-items:center}
+.example{font-size:12px;font-weight:700;color:var(--yellow-text);background:var(--yellow-soft);border-radius:999px;padding:3px 10px}
+.lines{display:flex;flex-direction:column;gap:10px}
+.line{background:var(--surface);border:1px solid var(--line);border-left:6px solid var(--blue);border-radius:16px;padding:12px;display:flex;flex-direction:column;gap:8px}
+.mode-sell .line{border-left-color:var(--yellow)}
+.line.warn{border-color:var(--danger);border-left-color:var(--danger);background:var(--danger-soft)}
+.line .top{display:flex;gap:8px;align-items:center}
+.line .name{flex:1;font-weight:700;font-size:17px;border:0;background:none;padding:2px 0}
+.line .calc{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.line input.q{width:80px}.line input.p{width:90px}.line select{width:72px}
+.line .bottom{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.line .alt{font-size:13px;color:var(--muted)}
+.line .sum{font-weight:800;font-size:19px;font-variant-numeric:tabular-nums;white-space:nowrap;margin-left:auto}
+.x{border:0;background:var(--sunk);color:var(--muted);width:32px;height:32px;border-radius:50%;font-size:18px;line-height:1;cursor:pointer;flex:none}
+.empty{text-align:center;color:var(--muted);padding:22px 8px;font-size:15px}
 
-/* Журнал */
-.tools{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-.tools input[type=search]{flex:1 1 180px;min-width:0}
-.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
-.seg button{border:0;background:transparent;padding:8px 12px}
-.seg button[aria-pressed="true"]{background:var(--ink);color:var(--surface)}
-.summary{display:flex;gap:28px;flex-wrap:wrap;padding-block:4px}
-.summary div{display:grid}
-.summary .v{font-family:var(--f-num);font-size:1.35rem;font-weight:600}
-.summary .v.debt{color:var(--warn)}
-.day{display:grid;gap:4px}
-.day-h{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding-top:10px;border-top:2px solid var(--ink)}
-.day-h .d{font-weight:600}
-.sub{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:.85rem;color:var(--muted);margin-top:2px}
-.chip{display:inline-block;border:0;border-radius:999px;padding:1px 9px;font-size:.8rem;font-weight:600;white-space:nowrap}
-.chip.ok{background:var(--ok-bg);color:var(--ok);border:1px solid color-mix(in srgb,var(--ok) 35%,transparent)}
-button.chip.debt{background:var(--warn-bg);color:var(--warn);border:1px solid color-mix(in srgb,var(--warn) 40%,transparent)}
-button.chip.debt:hover{border-color:var(--warn)}
-.del{border:0;background:transparent;color:var(--muted);padding:4px 8px;border-radius:8px}
-.del:hover{color:var(--rec)}
-.del.confirm{background:var(--rec);color:#fff}
-.empty{padding:28px 8px;text-align:center;color:var(--muted)}
-.empty b{display:block;color:var(--ink);font-size:1.05rem;margin-bottom:6px}
-.qty-unit{color:var(--muted);font-size:.85em}
-footer{display:flex;gap:10px;flex-wrap:wrap}
-.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--surface);
-  padding:10px 16px;border-radius:10px;font-weight:500;max-width:calc(100% - 32px);display:flex;gap:12px;align-items:center;z-index:20}
-.toast button{border:0;background:transparent;color:var(--accent);font-weight:600}
+/* sticky save bar */
+.savebar{position:fixed;left:0;right:0;bottom:calc(64px + env(safe-area-inset-bottom,0px));z-index:6;background:var(--surface);border-top:1px solid var(--line);padding-block:10px}
+.savebar .wrap{flex-direction:row;align-items:center;justify-content:space-between;gap:12px}
+.savebar .lbl{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.savebar .big{font-family:var(--f-display);font-weight:800;font-size:22px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.save{border:0;border-radius:999px;padding:14px 22px;font:800 16px var(--f-body);background:var(--blue);color:var(--blue-ink);cursor:pointer;white-space:nowrap}
+.mode-sell .save{background:var(--yellow);color:var(--yellow-ink)}
+.save:disabled{opacity:.45}
 
-/* Окно приёма оплаты */
-.modal{position:fixed;inset:0;background:rgba(10,14,18,.45);display:grid;place-items:center;z-index:10;
-  padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
-.modal-box{background:var(--surface);border-radius:14px;padding:20px;width:min(380px,100%);display:grid;gap:12px}
-.modal-box .field{font-family:var(--f-num);font-size:1.2rem;width:100%}
+/* history */
+.seg{display:flex;background:var(--sunk);border-radius:999px;padding:4px;gap:2px}
+.seg button{flex:1;border:0;background:none;color:var(--muted);font:700 15px var(--f-body);padding:10px 8px;border-radius:999px;cursor:pointer;white-space:nowrap}
+.seg button[aria-pressed=true]{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px color-mix(in srgb,var(--ink) 18%,transparent)}
+.seg.type button[data-v=buy][aria-pressed=true]{background:var(--blue);color:var(--blue-ink)}
+.seg.type button[data-v=sell][aria-pressed=true]{background:var(--yellow);color:var(--yellow-ink)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.nav{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.nav .lbl{font-weight:800;text-align:center;flex:1}
+.nav button{width:44px;height:44px;border-radius:50%;border:0;background:var(--sunk);color:var(--ink);font-size:22px;cursor:pointer}
+.big-total{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.big-total b{font-family:var(--f-display);font-weight:800;font-size:26px;font-variant-numeric:tabular-nums}
+.cmp{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;font-size:13px}
+.cmp div{background:var(--bg);border-radius:12px;padding:8px 10px;min-width:0}
+.cmp b{display:block;font-size:15px;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:1px}
+.dot.buy{background:var(--blue)} .dot.sell{background:var(--yellow)}
+.btnrow{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.btn{border:0;border-radius:14px;padding:13px 10px;font:700 15px var(--f-body);cursor:pointer;background:var(--sunk);color:var(--ink)}
+.btn.primary{background:var(--blue);color:var(--blue-ink)}
+.day{display:flex;flex-direction:column;gap:8px}
+.dayhead{display:flex;justify-content:space-between;font-weight:800;font-size:15px;padding-top:4px}
+.rec{background:var(--bg);border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.rec .top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.rec ul{margin:0;padding:0;list-style:none;font-size:14px;display:flex;flex-direction:column;gap:3px}
+.rec li{display:flex;justify-content:space-between;gap:10px}
+.rec li span:last-child{font-variant-numeric:tabular-nums;white-space:nowrap}
+.confirm{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:14px}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700}
+td.r,th.r{text-align:right;font-variant-numeric:tabular-nums}
 
-/* Телефон */
-@media (max-width:560px){
-  body{font-size:16px;padding-block:max(12px,env(safe-area-inset-top,0px)) max(32px,env(safe-area-inset-bottom,0px))}
-  input,select,textarea{font-size:16px} /* iOS не приближает поле при вводе */
-  .panel{padding:16px;border-radius:12px}
-  .btn{padding:12px 16px}
-  .btn.small{padding:7px 12px}
-  .mic{width:128px;height:128px}
-  .typed textarea{min-height:76px;flex-basis:100%}
-  .typed .btn{flex:1 1 100%}
-  header label{width:100%;justify-content:space-between}
-  .example.hint{font-size:.85rem}
-  .sale-meta{grid-template-columns:1fr 1fr}
-  .sale-meta label:first-child{grid-column:1/-1}
-  /* строки предпросмотра — карточками */
-  .preview thead{display:none}
-  .preview tbody{display:grid;gap:10px}
-  .preview tr{display:grid;grid-template-columns:1fr 76px 1fr 1fr;gap:8px;padding:10px;border:1px solid var(--line);border-radius:10px;position:relative}
-  .preview td{border:0;padding:0;display:grid;gap:2px}
-  .preview td[data-l]::before{content:attr(data-l);font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
-  .preview td:first-child{grid-column:1/-1;padding-right:40px}
-  .preview td:last-child{position:absolute;top:6px;right:4px}
-  .preview input,.preview select{min-width:0;padding:8px}
-  .preview input.n{min-width:0}
-  .preview td:first-child input{min-width:0}
-  /* журнал компактнее */
-  #log table{font-size:.92rem}
-  #log td,#log th{padding:7px 4px}
-  .summary{gap:18px}
-  .summary .v{font-size:1.15rem}
-  .seg{width:100%}
-  .seg button{flex:1;padding:8px 6px;white-space:nowrap}
-  footer .btn{flex:1 1 100%}
-}
+/* tab bar */
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:7;background:var(--surface);border-top:1px solid var(--line);
+  display:grid;grid-template-columns:1fr 1fr;
+  padding:6px max(12px,env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px))}
+.tabbar button{border:0;background:none;color:var(--muted);font:700 13px var(--f-body);display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px;border-radius:14px;cursor:pointer;height:52px;justify-content:center}
+.tabbar button svg{width:24px;height:24px}
+.tabbar button[aria-selected=true]{color:var(--blue);background:var(--blue-soft)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(140px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:12px 18px;border-radius:999px;font-weight:700;font-size:15px;z-index:20;max-width:calc(100% - 32px);text-align:center}
 </style>
-</head>
-<body data-mode="buy">
-<div class="wrap">
 
+</head><body>
 <header>
-  <div>
-    <h1>Голосовой склад</h1>
-    <p data-only="buy">Скажите, что купили, — приложение запишет количество, цену и сумму.</p>
-    <p data-only="sell">Скажите, что продали и кому, — приложение запишет сумму и долг.</p>
-  </div>
-  <label class="row-ctl"><span class="label">Дата</span><input type="date" id="opDate"></label>
+  <div class="hblue pad"><div class="wrap">
+    <h1>Голосовая касса</h1>
+    <div class="store" id="store">Подключаю…</div>
+  </div></div>
+  <div class="hyellow"></div>
 </header>
 
-<div class="modes" role="tablist" aria-label="Режим">
-  <button role="tab" id="modeBuy" aria-selected="true">Закупка</button>
-  <button role="tab" id="modeSell" aria-selected="false">Продажа</button>
-</div>
+<main class="pad">
+  <section id="view-rec" class="wrap mode-buy">
+    <div class="mode" id="mode">
+      <button type="button" data-v="buy" aria-pressed="true">Закупка</button>
+      <button type="button" data-v="sell" aria-pressed="false">Продажа</button>
+    </div>
+    <div class="tiles" id="tiles"></div>
+    <div class="micbox">
+      <div class="microw">
+        <span class="small muted" id="moderow">Что купили</span>
+        <input type="date" id="date" aria-label="Дата">
+      </div>
+      <button type="button" class="mic" id="mic" aria-label="Записать голос">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+      </button>
+      <div class="miclbl" id="miclbl">Нажмите и говорите</div>
+      <div class="hint" id="hint" hidden></div>
+      <textarea id="text" placeholder="апельсины 100 кг по 90, манго 30 штук по 80"></textarea>
+      <div class="microw"><span class="small muted">Цена — за кг или штуку</span><button type="button" class="chip" id="clear">Очистить</button></div>
+    </div>
+    <div class="lineshead"><h2>Расчёт</h2><span class="example" id="ex" hidden>Пример</span></div>
+    <div class="lines" id="lines"></div>
+    <button type="button" class="chip" id="add" style="align-self:flex-start">+ Добавить строку</button>
+  </section>
 
-<section class="panel" aria-label="Запись">
-  <div class="rec">
-    <button class="mic" id="mic" aria-label="Начать запись">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3" fill="currentColor" stroke="none"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4M8 22h8"/></svg>
-    </button>
-    <div class="rec-text">
-      <div class="status" id="status">Нажмите на микрофон и говорите</div>
-      <div class="example" data-only="buy">Например: <b>«купил апельсин 20 кг по 90, сыр 500 грамм по 300, бананы 5 ящиков за 1500»</b></div>
-      <div class="example" data-only="sell">Например: <b>«продал Гоге апельсин 5 кг по 120, киви 2 кг по 100, в долг»</b></div>
-      <div class="example hint" data-only="buy">«по 90» — цена за единицу (для граммов — за кг), «за 1500» — сумма за всё.</div>
-      <div class="example hint" data-only="sell">Оплата: «оплачено», «в долг» или «оплатил 500, остальное в долг».</div>
+  <section id="view-hist" class="wrap" hidden>
+    <div class="seg type" id="h-type">
+      <button type="button" data-v="buy" aria-pressed="true">Закупки</button>
+      <button type="button" data-v="sell" aria-pressed="false">Продажи</button>
     </div>
-  </div>
-  <div class="transcript" id="transcript" aria-live="polite"><span class="muted">Здесь появится то, что вы сказали.</span></div>
-  <div class="typed">
-    <textarea id="typed" rows="1" placeholder="…или напишите текстом"></textarea>
-    <button class="btn" id="parseTyped">Разобрать</button>
-  </div>
+    <div class="seg" id="h-period">
+      <button type="button" data-v="day" aria-pressed="true">День</button>
+      <button type="button" data-v="week" aria-pressed="false">Неделя</button>
+      <button type="button" data-v="month" aria-pressed="false">Месяц</button>
+    </div>
+    <div class="card">
+      <div class="nav">
+        <button type="button" id="h-prev" aria-label="Назад">‹</button>
+        <div class="lbl" id="h-label"></div>
+        <button type="button" id="h-next" aria-label="Вперёд">›</button>
+      </div>
+      <div class="big-total"><span class="muted" id="h-tlabel">Потрачено</span><b id="h-total">0 грн</b></div>
+      <div class="cmp" id="h-cmp"></div>
+      <div class="btnrow">
+        <button type="button" class="btn primary" id="h-xlsx">Скачать Excel</button>
+        <button type="button" class="btn" id="h-copy">Копировать</button>
+      </div>
+    </div>
+    <div class="tiles" id="h-tiles"></div>
+    <div class="card"><h2>Записи</h2><div id="h-list"></div></div>
+    <div class="card"><h2>По товарам</h2><div class="tbl" id="h-items"></div></div>
+  </section>
+</main>
 
-  <div id="previewBox" hidden>
-    <div class="row-ctl" style="justify-content:space-between;margin-bottom:10px">
-      <h2 id="previewTitle">Проверьте перед сохранением</h2>
-      <span class="muted">Можно исправить любое поле</span>
-    </div>
-    <div class="sale-meta" data-only="sell">
-      <label><span class="label">Покупатель</span><input class="field" id="buyer" list="buyersList" placeholder="Кому продали" autocomplete="off"></label>
-      <label><span class="label">Оплата</span>
-        <select class="field" id="payStatus">
-          <option value="paid">Оплачено</option>
-          <option value="debt">В долг</option>
-          <option value="partial">Частично</option>
-        </select></label>
-      <label id="paidAmtWrap" hidden><span class="label">Заплатил</span><input class="field num" id="paidAmt" inputmode="decimal" placeholder="0"></label>
-      <datalist id="buyersList"></datalist>
-    </div>
-    <div class="scroll">
-      <table class="preview">
-        <thead><tr><th>Товар</th><th class="r">Кол-во</th><th>Ед.</th><th class="r">Цена</th><th class="r">Сумма</th><th></th></tr></thead>
-        <tbody id="previewBody"></tbody>
-      </table>
-    </div>
-    <div class="draft-total"><span>Итого</span><span class="num" id="draftTotal">0</span></div>
-    <div class="unparsed" id="unparsed" hidden></div>
-    <div class="row-ctl" style="margin-top:12px">
-      <button class="btn primary" id="saveBtn">Сохранить</button>
-      <button class="btn" id="addRowBtn">Добавить строку</button>
-      <button class="btn ghost" id="cancelBtn">Отменить</button>
-    </div>
-  </div>
-</section>
+<div class="savebar pad" id="savebar"><div class="wrap">
+  <div><div class="lbl" id="totlbl">Итого к оплате</div><div class="big" id="total">0 грн</div></div>
+  <button type="button" class="save" id="save">Сохранить</button>
+</div></div>
 
-<section class="panel" aria-labelledby="logTitle">
-  <div class="row-ctl" style="justify-content:space-between">
-    <h2 id="logTitle">Журнал закупок</h2>
-    <div class="seg" role="group" aria-label="Вид">
-      <button id="viewDays" aria-pressed="true">По дням</button>
-      <button id="viewItems" aria-pressed="false">По товарам</button>
-      <button id="viewClients" aria-pressed="false" data-only="sell">Клиенты</button>
-    </div>
-  </div>
-  <div class="tools">
-    <input type="search" id="search" placeholder="Поиск товара">
-    <select id="period" aria-label="Период">
-      <option value="all">Всё время</option>
-      <option value="today">Сегодня</option>
-      <option value="7">7 дней</option>
-      <option value="30">30 дней</option>
-      <option value="month">Этот месяц</option>
-    </select>
-    <label class="row-ctl" data-only="sell"><input type="checkbox" id="onlyDebt"> Только долги</label>
-  </div>
-  <div class="summary">
-    <div><span class="label" id="s1l">Потрачено</span><span class="v" id="s1">0</span></div>
-    <div><span class="label" id="s2l">Позиций</span><span class="v" id="s2">0</span></div>
-    <div><span class="label" id="s3l">Дней</span><span class="v" id="s3">0</span></div>
-  </div>
-  <div id="log"></div>
-</section>
-
-<footer>
-  <button class="btn" id="exportCsv">Скачать таблицу (CSV для Excel)</button>
-  <button class="btn" id="exportJson">Сделать резервную копию</button>
-  <button class="btn" id="importJson">Восстановить из копии</button>
-  <input type="file" id="importFile" accept=".json,application/json" hidden>
-</footer>
-</div>
-
-<div class="modal" id="payModal" hidden role="dialog" aria-modal="true" aria-labelledby="payTitle">
-  <form class="modal-box" id="payForm">
-    <h2 id="payTitle">Принять оплату</h2>
-    <div class="muted" id="payInfo"></div>
-    <input class="field" id="payInput" inputmode="decimal" aria-label="Сумма оплаты">
-    <div class="row-ctl">
-      <button class="btn primary" type="submit">Принять оплату</button>
-      <button class="btn ghost" type="button" id="payCancel">Отмена</button>
-    </div>
-  </form>
-</div>
+<nav class="tabbar" role="tablist">
+  <button type="button" role="tab" data-tab="rec" aria-selected="true">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+    Запись</button>
+  <button type="button" role="tab" data-tab="hist" aria-selected="false">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M7 14h4M7 17h7"/></svg>
+    История</button>
+</nav>
+<div class="toast" id="toast" hidden></div>
 
 <script>
-/* ============ Хранилище ============ */
-const KEYS = {buy:'sklad.v1', sell:'sklad.sales.v1'};
-const store = {buy:[], sell:[]};
-function load(){ for(const m in KEYS){ try{ store[m] = JSON.parse(localStorage.getItem(KEYS[m])) || []; }catch(e){ store[m] = []; } } }
-function save(m){ try{ localStorage.setItem(KEYS[m], JSON.stringify(store[m])); }catch(e){ toast('Не удалось сохранить: память браузера недоступна'); } }
+// PARSER START
+const NUMW = {
+  "ноль":0,"один":1,"одна":1,"одну":1,"одного":1,"два":2,"две":2,"дві":2,"три":3,"четыре":4,"чотири":4,"пять":5,"п'ять":5,"шесть":6,"шість":6,
+  "семь":7,"сім":7,"восемь":8,"вісім":8,"девять":9,"дев'ять":9,"десять":10,"одиннадцать":11,"одинадцять":11,"двенадцать":12,"дванадцять":12,
+  "тринадцать":13,"тринадцять":13,"четырнадцать":14,"чотирнадцять":14,"пятнадцать":15,"п'ятнадцять":15,"шестнадцать":16,"шістнадцять":16,
+  "семнадцать":17,"сімнадцять":17,"восемнадцать":18,"вісімнадцять":18,"девятнадцать":19,"дев'ятнадцять":19,"двадцать":20,"двадцять":20,
+  "тридцать":30,"тридцять":30,"сорок":40,"пятьдесят":50,"п'ятдесят":50,"шестьдесят":60,"шістдесят":60,"семьдесят":70,"сімдесят":70,
+  "восемьдесят":80,"вісімдесят":80,"девяносто":90,"дев'яносто":90,"сто":100,"двести":200,"двісті":200,"триста":300,"четыреста":400,
+  "чотириста":400,"пятьсот":500,"п'ятсот":500,"шестьсот":600,"шістсот":600,"семьсот":700,"сімсот":700,"восемьсот":800,"вісімсот":800,
+  "девятьсот":900,"дев'ятсот":900,"полтора":1.5,"полторы":1.5,"півтора":1.5
+};
+const THOUSAND = /^(тысяч[аи]?|тисяч[аі]?)$/;
+const STOP = new Set(["купил","купила","купили","куплено","покупка","закупка","закупил","закупила","закупили","взял","взяла","взяли",
+  "продал","продала","продали","продано","продажа","отдал","отдали","и","а","ещё","еще","также","так","потом","плюс","это","у","меня","я",
+  "мы","ну","вот","дальше","далее","следующий","следующее","итого","всего","по","і","та","ще","купив","продав","взяв","також","потім",
+  "грн","гривен","гривны","гривень","гривня","гривні","гривнi","гривна","руб","цена","ціна","штука","за","на","с","з","ценой","кило-"]);
 
-/* ============ Разбор фразы ============ */
-const NUM = {ноль:0,один:1,одна:1,одно:1,два:2,две:2,три:3,четыре:4,пять:5,шесть:6,семь:7,восемь:8,девять:9,
-  десять:10,одиннадцать:11,двенадцать:12,тринадцать:13,четырнадцать:14,пятнадцать:15,шестнадцать:16,семнадцать:17,
-  восемнадцать:18,девятнадцать:19,двадцать:20,тридцать:30,сорок:40,пятьдесят:50,шестьдесят:60,семьдесят:70,
-  восемьдесят:80,девяносто:90,сто:100,двести:200,триста:300,четыреста:400,пятьсот:500,шестьсот:600,семьсот:700,
-  восемьсот:800,девятьсот:900,полтора:1.5,полторы:1.5,полтораста:150};
+function unitOf(w){
+  if (/^(кг|кило|килограмм[а-яіїє]*|килограм[а-яіїє]*|кілограм[а-яіїє]*|кіло|кіл)$/.test(w)) return "кг";
+  if (/^(г|гр|грамм[а-яіїє]*|грам[а-яіїє]*)$/.test(w)) return "г";
+  if (/^(ящ|ящик[а-яіїє]*|ящиков|ящіка?|ящиків)$/.test(w)) return "ящ";
+  if (/^(шт|штук[а-яіїє]*|штуч[а-яіїє]*|штуки|штучок)$/.test(w)) return "шт";
+  if (/^(коробк[а-яіїє]*|коробок|кор)$/.test(w)) return "кор";
+  if (/^(пуч[а-яіїє]*)$/.test(w)) return "пуч";
+  if (/^(меш[а-яіїє]*)$/.test(w)) return "меш";
+  if (/^(пачк[а-яіїє]*|пачек|пач)$/.test(w)) return "пач";
+  if (/^(упаков[а-яіїє]*|уп)$/.test(w)) return "уп";
+  return null;
+}
 
-// «двести пятьдесят» → 250, «две тысячи» → 2000, «10 с половиной» → 10.5
-function wordsToNumbers(text){
-  const toks = text.split(/(\s+)/);
-  const out = []; let total = null, cur = 0, pendingSpace = '';
-  const flush = () => { if(total !== null){ out.push(String(total + cur)); total = null; cur = 0; } };
-  for(const t of toks){
-    if(/^\s+$/.test(t)){ if(total !== null) pendingSpace = t; else out.push(t); continue; }
-    const w = t.toLowerCase().replace(/[.,!?;:]+$/,'');
-    const tail = t.slice(w.length);
-    if(w in NUM){ if(total === null) total = 0; cur += NUM[w]; pendingSpace=''; if(tail){ flush(); out.push(tail);} continue; }
-    if(/^тысяч/.test(w)){
-      if(total === null){
-        let k = out.length-1; while(k>=0 && /^\s+$/.test(out[k])) k--;
-        if(k>=0 && /^\d+(?:[.,]\d+)?$/.test(out[k])){ out[k] = String(parseFloat(out[k].replace(',','.'))*1000); out.length = k+1; if(tail) out.push(tail); continue; }
-        total = 0; cur = 1;
+function tokenize(text){
+  let s = (text||"").toLowerCase().replace(/ё/g,"е").replace(/[’ʼ`]/g,"'");
+  s = s.replace(/(\d)\s*[,.]\s*(\d)/g,"$1.$2");          // 10,5 -> 10.5
+  s = s.replace(/(\d)\s+(\d{3})(?!\d)/g,(m,a,b)=>a+b);   // 1 200 -> 1200
+  s = s.replace(/(\d)([a-zа-яіїє])/gi,"$1 $2").replace(/([a-zа-яіїє])(\d)/gi,"$1 $2");
+  s = s.replace(/[;:!?«»"()\n\r\t,/\\–—-]+/g," ").replace(/\.(?!\d)/g," ");
+  const raw = s.split(/\s+/).filter(Boolean);
+  const out = [];
+  for (let i=0;i<raw.length;i++){
+    const w = raw[i];
+    // number words and digits, with "тысяча" multiplier
+    if (/^\d+(\.\d+)?$/.test(w) || (w in NUMW)){
+      let total=0, cur=0, used=false;
+      while (i<raw.length){
+        const t = raw[i];
+        if (/^\d+(\.\d+)?$/.test(t)){ if (used && cur && !THOUSAND.test(raw[i+1]||"")) break; cur += parseFloat(t); used=true; i++; }
+        else if (t in NUMW){ const v=NUMW[t]; if (used && cur && v>=cur && v<1000 && v!==1.5) break; cur += v; used=true; i++; }
+        else if (THOUSAND.test(t) && used){ total += (cur||1)*1000; cur=0; i++; }
+        else break;
       }
-      total += (cur||1)*1000; cur = 0; pendingSpace=''; if(tail){ flush(); out.push(tail);} continue;
+      i--;
+      out.push({t:"num", v: total+cur});
+      continue;
     }
-    flush(); if(pendingSpace){ out.push(pendingSpace); pendingSpace=''; }
-    out.push(t);
+    if (w==="полкило"||w==="півкіло"){ out.push({t:"num",v:0.5},{t:"unit",u:"кг"}); continue; }
+    if ((w==="с"||w==="з") && /^половин/.test(raw[i+1]||"")){ out.push({t:"half"}); i++; continue; }
+    if (/^половин/.test(w)){ out.push({t:"half"}); continue; }
+    const u = unitOf(w);
+    if (u){ out.push({t:"unit",u}); continue; }
+    if (w==="по") { out.push({t:"po"}); continue; }
+    if (w==="или"||w==="або"||w==="либо") { out.push({t:"ili"}); continue; }
+    if (w==="на"||w==="за") { out.push({t:"na",w}); continue; }
+    out.push({t:"word",w});
   }
-  flush();
-  return out.join('')
-    .replace(/(\d+)\s*(?:и|с)\s+половин[а-яё]*/gi, (m,n)=> String(+n + 0.5))
-    .replace(/(по|за)\s*(\d{1,3})\s(\d{3})(?!\d)/gi, '$1 $2$3'); // «по 1 500» → 1500
+  return out;
 }
 
-const num = s => parseFloat(String(s).replace(',','.'));
-const r2 = x => Math.round(x*100)/100;
-const r3 = x => Math.round(x*1000)/1000;
-
-function preNormalize(text){
-  let s = wordsToNumbers(String(text).replace(/ё/g,'е').replace(/Ё/g,'Е'));
-  // «полкило», «пол литра»
-  s = s.replace(/(^|[^а-яё])пол\s*(кило[а-яё]*|кг|литр[а-яё]*|л)(?=[^а-яё]|$)/gi, '$1 0.5 $2');
-  // «1 кг 200 грамм» → 1.2 кг
-  s = s.replace(/(\d+(?:[.,]\d+)?)\s*(?:кг|кило[а-яё]*)\s+(?:и\s+)?(\d+)\s*(?:граммов|грамма|грамм|гр|г)(?=[^а-яё]|$)/gi,
-    (m,a,b)=> String(r3(num(a)+num(b)/1000))+' кг');
-  return s;
+function pickPrimary(qtys, priceUnit){
+  if (!qtys.length) return null;
+  if (priceUnit){ const m = qtys.find(q=>q.u===priceUnit); if (m) return m; }
+  const order = ["кг","шт","пуч","пач","уп","кор","меш",null,"ящ"];
+  for (const u of order){ const m = qtys.find(q=>q.u===u); if (m) return m; }
+  return qtys[0];
 }
 
-const UNIT_RE = '(кг|кило(?:грамм[а-яё]*)?|килограм[а-яё]*|гр|г|грамм[а-яё]*|тонн[а-яё]*|т|шт[а-яё]*|штук[а-яё]*|литр[а-яё]*|л|ящик[а-яё]*|ящ|упаков[а-яё]*|уп|пачк[а-яё]*|пачек|мешк[а-яё]*|мешок|меш|коробк[а-яё]*|короб[а-яё]*|бутыл[а-яё]*|банк[а-яё]*|пучк[а-яё]*|пучок|десят[а-яё]*|дюжин[а-яё]*)';
-const END = '(?=[^а-яёa-z0-9]|$)';
-function normUnit(u){
-  if(!u) return '';
-  u = u.toLowerCase();
-  if(/^(кг|кило|килограм)/.test(u)) return 'кг';
-  if(/^(г|гр|грамм)/.test(u)) return 'г';
-  if(/^т(онн)?/.test(u)) return 'т';
-  if(/^(шт|штук)/.test(u)) return 'шт';
-  if(/^(л|литр)/.test(u)) return 'л';
-  if(/^ящ/.test(u)) return 'ящ';
-  if(/^(уп|пач)/.test(u)) return 'уп';
-  if(/^меш/.test(u)) return 'меш';
-  if(/^короб/.test(u)) return 'кор';
-  if(/^бутыл/.test(u)) return 'бут';
-  if(/^банк/.test(u)) return 'бан';
-  if(/^пуч/.test(u)) return 'пуч';
-  if(/^десят/.test(u)) return 'дес';
-  if(/^дюжин/.test(u)) return 'дюж';
-  return u;
-}
-const STOP = /^(и|а|ещ[её]|также|потом|затем|ну|так|вот|дальше|плюс|сегодня|вчера|купил[аи]?|покупка|взял[аи]?|приобрел[аи]?|закупил[аи]?|закупка|привез(ли|ла)?|продал[аи]?|продажа|отпустил[аи]?|покупател[а-яё]*|клиент[а-яё]*|кому|для|ему|ей|остальное|остаток)$/i;
-
-function parsePhrase(text){
-  const src = preNormalize(text);
-  // Конец каждой позиции — цена: «по 90 (рублей) (за кг)» или «за 1500»
-  const priceRe = new RegExp('(по|за)(?:\\s+цене)?\\s*(\\d+(?:[.,]\\d+)?)\\s*(?:руб[а-яё]*|р\\.?|₽|лари|лар[а-яё]*|gel|сом[а-яё]*|тенге|грн|гривен[а-яё]*|долл[а-яё]*|\\$)?'
-    + '(?:\\s*(?:за|в)\\s*(?:один\\s+|одну\\s+|1\\s*)?' + UNIT_RE + END + ')?', 'gi');
-  const found = [], leftovers = [];
-  let last = 0, m;
-  while((m = priceRe.exec(src))){
-    const prefix = src.slice(last, m.index);
-    last = priceRe.lastIndex;
-    const sufUnit = normUnit(m[3]);
-    const isTotal = m[1].toLowerCase() === 'за' && !m[3];
-    let price = num(m[2]);
-    const qRe = new RegExp('(\\d+(?:[.,]\\d+)?)\\s*' + UNIT_RE + '?' + END, 'gi');
-    let q, lastQ = null;
-    while((q = qRe.exec(prefix))) lastQ = {i:q.index, len:q[0].length, n:num(q[1]), u:q[2]};
-    let name = prefix, qty = 1, unit = '';
-    if(lastQ){ qty = lastQ.n; unit = normUnit(lastQ.u); name = prefix.slice(0,lastQ.i) + ' ' + prefix.slice(lastQ.i+lastQ.len); }
-    else if(sufUnit){ unit = sufUnit; }
-    name = name.replace(/[,;.!?:]+/g,' ').split(/\s+/).filter(Boolean);
-    while(name.length && STOP.test(name[0])) name.shift();
-    while(name.length && STOP.test(name[name.length-1])) name.pop();
-    name = name.join(' ').trim();
-    if(!name){ leftovers.push(prefix + m[0]); continue; }
-    name = name.charAt(0).toUpperCase() + name.slice(1);
-    if(!unit) unit = 'шт';
-    // граммы храним в килограммах; «по 300» при граммах — это цена за кг
-    if(unit === 'г'){ qty = r3(qty/1000); unit = 'кг'; }
-    if(sufUnit === 'г' && !isTotal) price = price*1000;
-    const total = isTotal ? price : r2(qty*price);
-    const unitPrice = isTotal ? r2(price/(qty||1)) : r2(price);
-    found.push({name, qty, unit, price:unitPrice, total});
-  }
-  const rest = src.slice(last).replace(/[,;.!?:]+/g,' ').split(/\s+/).filter(w=>w && !STOP.test(w)).join(' ');
-  if(rest) leftovers.push(rest);
-  return {items:found, leftovers};
+function finishItem(it){
+  if (!it.words.length && !it.qtys.length && it.price==null && it.total==null) return null;
+  const prim = pickPrimary(it.qtys, it.priceUnit);
+  let qty = prim ? prim.v : (it.total!=null||it.price!=null ? 1 : 0);
+  let unit = prim ? (prim.u || it.priceUnit || "кг") : (it.priceUnit || "кг");
+  let price = it.price;
+  if (price==null && it.total!=null) price = qty ? +(it.total/qty).toFixed(2) : it.total;
+  const alt = it.qtys.filter(q=>q!==prim && !(prim && q.u===prim.u && q.v===prim.v)).map(q=>fmtNum(q.v)+" "+(q.u||"")).join(", ");
+  let name = it.words.join(" ").trim();
+  name = name ? name[0].toUpperCase()+name.slice(1) : "Товар";
+  return {name, qty: +(+qty).toFixed(3), unit, price: price==null ? null : +price, alt};
 }
 
-const escRe = s => s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
-const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
-// Продажа: покупатель, оплата и товары
-function parseSale(text, knownBuyers = []){
-  let s = preNormalize(text);
-  let status = null, amount = null, buyer = '';
-  const B = '(^|[^а-яё])';
-  const partial = new RegExp(B + '(?:оплатил[аи]?|заплатил[аи]?|отдал[аи]?|дал[аи]?|получил[аи]?|внес(?:ла|ли)?)\\s+(\\d+(?:[.,]\\d+)?)\\s*(?:руб[а-яё]*|лари|р\\.?)?(?:\\s*(?:,|а|и)?\\s*(?:остальное|остаток)\\s+в\\s+долг)?', 'i');
-  let m = s.match(partial);
-  if(m){ status = 'partial'; amount = num(m[2]); s = s.replace(m[0], m[1] + ' , '); }
-  const debt = new RegExp(B + '(в\\s+долг|под\\s+запись|в\\s+кредит|не\\s+оплатил[аи]?|не\\s+оплачен[аоы]?|не\\s+заплатил[аи]?|без\\s+оплаты|отдаст\\s+(?:позже|потом)|заплатит\\s+(?:позже|потом)|долг)(?=[^а-яё]|$)', 'gi');
-  if(debt.test(s)){ if(!status) status = 'debt'; s = s.replace(debt, '$1 , '); }
-  const paid = new RegExp(B + '((?:сразу\\s+)?оплачен[оаы]?|оплатил[аи]?|заплатил[аи]?|рассчитал(?:ся|ась|ись)?|расчитал(?:ся|ась|ись)?|наличн[а-яё]*|переводом|картой|деньги\\s+получил[аи]?|оплата)(?=[^а-яё]|$)', 'gi');
-  if(paid.test(s)){ if(!status) status = 'paid'; s = s.replace(paid, '$1 , '); }
-  // 1) уже знакомый покупатель (по основе слова: «Гога» найдёт «Гоге»)
-  for(const b of [...knownBuyers].sort((a,b)=>b.length-a.length)){
-    if(b.length < 3) continue;
-    const stem = b.toLowerCase().replace(/ё/g,'е').slice(0, Math.max(3, b.length-1));
-    const re = new RegExp(B + '(' + escRe(stem) + '[а-яёa-z]*)(?=[^а-яёa-z]|$)', 'i');
-    const mm = s.match(re);
-    if(mm){ buyer = b; s = s.replace(mm[0], mm[1] + ' '); break; }
-  }
-  // 2) «покупатель Гога», «клиенту Ахмеду», «для Нино»
-  if(!buyer){
-    const mm = s.match(new RegExp(B + '(?:покупател[а-яё]*|клиент[а-яё]*|кому|для)\\s+([а-яёa-z][а-яёa-z-]*)', 'i'));
-    if(mm){ buyer = cap(mm[2]); s = s.replace(mm[0], mm[1] + ' '); }
-  }
-  // 3) «продал Гоге …» — имя с большой буквы сразу после «продал»
-  if(!buyer){
-    const mm = s.match(/(продал[аи]?|отпустил[аи]?)\s+([А-ЯЁA-Z][а-яёa-z-]+)/);
-    if(mm){ buyer = mm[2]; s = s.replace(mm[0], mm[1] + ' '); }
-  }
-  const r = parsePhrase(s);
-  return {buyer, status, amount, items:r.items, leftovers:r.leftovers};
-}
-window.parsePhrase = parsePhrase; window.parseSale = parseSale; // для проверки из консоли
-
-/* ============ Утилиты ============ */
-const $ = id => document.getElementById(id);
-const fmt = n => (Math.round(n*100)/100).toLocaleString('ru-RU',{maximumFractionDigits:2});
-const fmtQ = n => (Math.round(n*1000)/1000).toLocaleString('ru-RU',{maximumFractionDigits:3});
-const esc = s => String(s ?? '').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const iso = d => { d = new Date(d); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,10); };
-const todayISO = () => iso(Date.now());
-const UNITS = ['кг','г','т','шт','л','ящ','уп','меш','кор','бут','бан','пуч','дес','дюж'];
-const debtOf = s => Math.max(0, r2(s.total - (s.paid||0)));
-let toastTimer;
-function toast(msg, undo){
-  document.querySelector('.toast')?.remove();
-  const t = document.createElement('div'); t.className='toast'; t.setAttribute('role','status');
-  t.textContent = msg;
-  if(undo){ const b=document.createElement('button'); b.textContent='Вернуть'; b.onclick=()=>{undo();t.remove();}; t.append(b); }
-  document.body.append(t); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.remove(), 5000);
-}
-function dateLabel(d0){
-  const d = new Date(d0+'T00:00:00');
-  const s = d.toLocaleDateString('ru-RU',{day:'numeric',month:'long',year: d.getFullYear()===new Date().getFullYear()?undefined:'numeric'});
-  if(d0===todayISO()) return 'Сегодня, '+s;
-  if(d0===iso(Date.now()-864e5)) return 'Вчера, '+s;
-  return s + ', ' + d.toLocaleDateString('ru-RU',{weekday:'long'});
-}
-function knownBuyers(){
-  const seen = new Map();
-  [...store.sell].sort((a,b)=>b.ts-a.ts).forEach(s=>{ if(s.buyer && !seen.has(s.buyer.toLowerCase())) seen.set(s.buyer.toLowerCase(), s.buyer); });
-  return [...seen.values()];
-}
-
-/* ============ Режим ============ */
-let mode = 'buy', view = 'days';
-const drafts = {buy:[], sell:[]};
-let saleMeta = {buyer:'', status:'paid', amount:''};
-function setMode(m){
-  mode = m; document.body.dataset.mode = m;
-  $('modeBuy').setAttribute('aria-selected', m==='buy'); $('modeSell').setAttribute('aria-selected', m==='sell');
-  $('logTitle').textContent = m==='buy' ? 'Журнал закупок' : 'Журнал продаж';
-  $('search').placeholder = m==='buy' ? 'Поиск товара' : 'Поиск товара или покупателя';
-  $('typed').placeholder = m==='buy' ? '…или напишите текстом: «помидоры 15 кг по 120»' : '…или напишите текстом: «продал Нино сыр 300 грамм по 400, оплачено»';
-  document.querySelector('meta[name=theme-color]').content = getComputedStyle(document.body).getPropertyValue('--mode').trim() || '#e0a100';
-  if(m==='buy' && view==='clients') setView('days');
-  if(!listening) $('status').textContent = idleText();
-  $('unparsed').hidden = true;
-  try{ localStorage.setItem('sklad.mode', m); }catch(e){}
-  renderPreview(); render();
-}
-const idleText = () => mode==='buy' ? 'Нажмите на микрофон и скажите, что купили' : 'Нажмите на микрофон и скажите, что продали и кому';
-$('modeBuy').onclick = ()=> setMode('buy');
-$('modeSell').onclick = ()=> setMode('sell');
-
-/* ============ Предпросмотр ============ */
-function handleText(text){
-  const t = ' ' + text.toLowerCase() + ' ';
-  if(/[^а-яё](продал[аи]?|продажа|отпустил[аи]?)[^а-яё]/.test(t)){ if(mode!=='sell') setMode('sell'); }
-  else if(/[^а-яё](купил[аи]?|закупил[аи]?|закупка|приобр[её]л[аи]?)[^а-яё]/.test(t)){ if(mode!=='buy') setMode('buy'); }
-  let r;
-  if(mode==='sell'){
-    r = parseSale(text, knownBuyers());
-    if(r.buyer) saleMeta.buyer = r.buyer;
-    if(r.status){ saleMeta.status = r.status; saleMeta.amount = r.amount ?? ''; }
-  } else r = parsePhrase(text);
-  drafts[mode] = drafts[mode].concat(r.items);
-  renderPreview();
-  const up = $('unparsed');
-  if(r.leftovers.length){
-    up.hidden = false;
-    up.innerHTML = 'Не понял часть фразы: <b>' + r.leftovers.map(esc).join('</b>, <b>') + '</b>. Называйте каждую позицию так: товар, количество, «по» цена.';
-    $('previewBox').hidden = false;
-  } else up.hidden = true;
-  return r.items.length;
-}
-function renderPreview(){
-  const d = drafts[mode];
-  $('previewBox').hidden = !d.length && $('unparsed').hidden;
-  $('previewBody').innerHTML = d.map((it,i)=>`<tr data-i="${i}">
-    <td><input data-f="name" value="${esc(it.name)}" aria-label="Товар" placeholder="Товар"></td>
-    <td data-l="Кол-во"><input class="n" data-f="qty" inputmode="decimal" value="${it.qty}" aria-label="Количество"></td>
-    <td data-l="Ед."><select data-f="unit" aria-label="Единица">${UNITS.concat(UNITS.includes(it.unit)?[]:[it.unit]).map(u=>`<option${u===it.unit?' selected':''}>${esc(u)}</option>`).join('')}</select></td>
-    <td data-l="${mode==='buy'?'Цена':'Цена'}"><input class="n" data-f="price" inputmode="decimal" value="${it.price}" aria-label="Цена за единицу"></td>
-    <td data-l="Сумма"><input class="n" data-f="total" inputmode="decimal" value="${it.total}" aria-label="Сумма"></td>
-    <td><button class="del" data-rm="${i}" aria-label="Убрать строку">✕</button></td></tr>`).join('');
-  if(mode==='sell'){
-    $('buyer').value = saleMeta.buyer;
-    $('payStatus').value = saleMeta.status;
-    $('paidAmtWrap').hidden = saleMeta.status !== 'partial';
-    $('paidAmt').value = saleMeta.amount;
-    $('buyersList').innerHTML = knownBuyers().map(b=>`<option value="${esc(b)}">`).join('');
-  }
-  updateDraftTotal();
-  $('saveBtn').textContent = d.length ? `Сохранить (${d.length})` : 'Сохранить';
-  $('saveBtn').disabled = !d.length;
-}
-function updateDraftTotal(){
-  const sum = drafts[mode].reduce((s,i)=>s+(+i.total||0),0);
-  let txt = fmt(sum);
-  if(mode==='sell' && saleMeta.status==='partial'){ const p = num(saleMeta.amount)||0; txt += ` · долг ${fmt(Math.max(0,sum-p))}`; }
-  if(mode==='sell' && saleMeta.status==='debt') txt += ' · всё в долг';
-  $('draftTotal').textContent = txt;
-}
-$('previewBody').addEventListener('input', e=>{
-  const tr = e.target.closest('tr'); if(!tr) return;
-  const it = drafts[mode][+tr.dataset.i], f = e.target.dataset.f, v = e.target.value;
-  if(f==='name' || f==='unit'){ it[f]=v; return; }
-  const n = num(v); if(isNaN(n)) return;
-  it[f] = n;
-  if(f==='qty' || f==='price'){ it.total = r2(it.qty*it.price); tr.querySelector('[data-f=total]').value = it.total; }
-  if(f==='total' && it.qty){ it.price = r2(it.total/it.qty); tr.querySelector('[data-f=price]').value = it.price; }
-  updateDraftTotal();
-});
-$('previewBody').addEventListener('click', e=>{
-  const b = e.target.closest('[data-rm]'); if(!b) return;
-  drafts[mode].splice(+b.dataset.rm,1); renderPreview();
-});
-$('buyer').oninput = e=>{ saleMeta.buyer = e.target.value; };
-$('payStatus').onchange = e=>{ saleMeta.status = e.target.value; $('paidAmtWrap').hidden = saleMeta.status!=='partial'; if(saleMeta.status==='partial') $('paidAmt').focus(); updateDraftTotal(); };
-$('paidAmt').oninput = e=>{ saleMeta.amount = e.target.value; updateDraftTotal(); };
-$('addRowBtn').onclick = ()=>{ drafts[mode].push({name:'',qty:1,unit:'кг',price:0,total:0}); renderPreview(); $('previewBody').lastElementChild.querySelector('input').focus(); };
-function clearDraft(){ drafts[mode]=[]; if(mode==='sell') saleMeta = {buyer:'', status:'paid', amount:''}; $('unparsed').hidden = true; renderPreview(); resetTranscript(); }
-$('cancelBtn').onclick = clearDraft;
-$('saveBtn').onclick = ()=>{
-  const date = $('opDate').value || todayISO();
-  const ok = drafts[mode].filter(d=>d.name.trim());
-  if(!ok.length){ toast('Укажите название товара'); return; }
-  const now = Date.now(), check = now.toString(36);
-  if(mode==='buy'){
-    ok.forEach((d,k)=>store.buy.push({id: check+k, date, ts:now, name:d.name.trim(), qty:d.qty, unit:d.unit, price:d.price, total:d.total}));
-  } else {
-    const buyer = saleMeta.buyer.trim();
-    if(!buyer && saleMeta.status!=='paid'){ toast('Укажите покупателя — иначе непонятно, за кем долг'); $('buyer').focus(); return; }
-    let left = saleMeta.status==='paid' ? Infinity : saleMeta.status==='debt' ? 0 : (num(saleMeta.amount)||0);
-    ok.forEach((d,k)=>{ const paid = r2(Math.min(d.total, left)); left -= paid;
-      store.sell.push({id: check+k, check, date, ts:now, name:d.name.trim(), qty:d.qty, unit:d.unit, price:d.price, total:d.total, buyer, paid}); });
-  }
-  save(mode); clearDraft(); render();
-  toast(`Сохранено позиций: ${ok.length}`);
-};
-$('parseTyped').onclick = ()=>{ const t=$('typed').value.trim(); if(!t) return; handleText(t); $('typed').value=''; };
-$('typed').addEventListener('keydown', e=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); $('parseTyped').click(); } });
-
-/* ============ Голос ============ */
-const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-let rec = null, listening = false, finalText = '';
-function resetTranscript(){ finalText=''; $('transcript').innerHTML = '<span class="muted">Здесь появится то, что вы сказали.</span>'; }
-function setListening(on){
-  listening = on;
-  $('mic').classList.toggle('on', on);
-  $('mic').setAttribute('aria-label', on ? 'Остановить запись' : 'Начать запись');
-  $('status').textContent = on ? 'Слушаю… нажмите ещё раз, когда закончите' : idleText();
-}
-if(!SR){
-  $('mic').disabled = true; $('mic').style.opacity = .45;
-  $('status').textContent = 'В этом браузере нет голосового ввода. Откройте приложение в Chrome (Android) или Safari (iPhone) — или нажмите на микрофон на клавиатуре и надиктуйте в поле ниже.';
-} else {
-  // На телефонах непрерывный режим работает плохо (повторы слов, обрывы),
-  // поэтому там одна фраза на одно нажатие: сказали список — запись сама остановилась.
-  const isPhone = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Mac/.test(navigator.platform));
-  rec = new SR();
-  rec.lang = 'ru-RU'; rec.continuous = !isPhone; rec.interimResults = true; rec.maxAlternatives = 1;
-  let base = '', errorShown = false;
-  rec.onresult = e=>{
-    let fin = '', interim = '';
-    for(let i=0;i<e.results.length;i++){
-      const r = e.results[i];
-      if(r.isFinal) fin += ' ' + r[0].transcript.trim(); else interim += r[0].transcript;
+function parseText(text){
+  const toks = tokenize(text);
+  const items = [];
+  let cur = null;
+  const fresh = ()=>({words:[],qtys:[],price:null,total:null,priceUnit:null,lastIli:false});
+  const push = ()=>{ if (cur){ const r = finishItem(cur); if (r) items.push(r); } cur = fresh(); };
+  cur = fresh();
+  for (let i=0;i<toks.length;i++){
+    const k = toks[i], prev = toks[i-1], next = toks[i+1];
+    if (k.t==="num"){
+      if (prev && prev.t==="po"){
+        cur.price = k.v;
+        // "по 450 за ящик" / "по 90 за кг"
+        if (next && next.t==="na" && toks[i+2] && toks[i+2].t==="unit"){ cur.priceUnit = toks[i+2].u==="г"?"кг":toks[i+2].u; i+=2; }
+        else if (next && next.t==="unit"){ cur.priceUnit = next.u; i+=1; }
+        push(); continue;
+      }
+      if (prev && prev.t==="na" && !(next && next.t==="unit")){ cur.total = k.v; push(); continue; }
+      let q = {v:k.v, u:null};
+      if (next && next.t==="unit"){ q.u = next.u; i++; }
+      if (q.u==="г"){
+        const last = cur.qtys[cur.qtys.length-1];
+        if (last && last.u==="кг" && !cur.lastIli){ last.v = +(last.v + q.v/1000).toFixed(3); continue; }
+        q = {v:+(q.v/1000).toFixed(3), u:"кг"};
+      }
+      // new product name already started after previous quantities -> previous item had no price
+      cur.qtys.push(q); cur.lastIli=false; continue;
     }
-    finalText = (base + fin).trim();
-    $('transcript').innerHTML = esc(finalText) + (interim ? ' <span class="interim">'+esc(interim)+'</span>' : '');
-  };
-  rec.onerror = e=>{
-    if(e.error==='not-allowed' || e.error==='service-not-allowed'){
-      errorShown = true; setListening(false);
-      $('status').textContent = isPhone
-        ? 'Нет доступа к микрофону. Разрешите микрофон для этого сайта в настройках браузера или нажмите на значок микрофона на клавиатуре и надиктуйте в поле ниже.'
-        : 'Нет доступа к микрофону. Разрешите его в адресной строке браузера.';
-    } else if(e.error==='network'){ errorShown = true; setListening(false); $('status').textContent = 'Нужен интернет: распознавание речи идёт через сервис браузера.'; }
-  };
-  function finish(){
-    setListening(false);
-    if(errorShown){ errorShown = false; return; }
-    if(finalText.trim()){
-      const n = handleText(finalText);
-      $('status').textContent = n ? (isPhone ? 'Готово. Нажмите на микрофон, чтобы добавить ещё.' : 'Готово. Проверьте и сохраните.') : 'Не нашёл ни одной позиции. Попробуйте ещё раз.';
-    } else $('status').textContent = 'Ничего не услышал. Нажмите на микрофон и говорите сразу.';
-  }
-  rec.onend = ()=>{
-    // на компьютере браузер останавливается после паузы — перезапускаем, пока не нажали «стоп»
-    if(listening && !isPhone){ base = finalText + ' '; try{ rec.start(); return; }catch(e){} }
-    finish();
-  };
-  $('mic').onclick = ()=>{
-    if(!listening){
-      finalText = ''; base = ''; errorShown = false; $('transcript').textContent = '';
-      try{ rec.start(); setListening(true); if(isPhone) $('status').textContent = 'Слушаю… говорите весь список, запись остановится сама'; }
-      catch(e){ $('status').textContent='Не удалось включить микрофон'; }
-    } else {
-      listening = false; rec.stop(); // onend вызовет finish()
+    if (k.t==="half"){ const last = cur.qtys[cur.qtys.length-1]; if (last) last.v += 0.5; else if (cur.price!=null) cur.price+=0.5; continue; }
+    if (k.t==="unit"){ // unit before number, e.g. "кг 10" — attach to last unitless qty
+      const last = cur.qtys[cur.qtys.length-1];
+      if (last && !last.u){ last.u = k.u==="г"?"кг":k.u; if (k.u==="г") last.v=+(last.v/1000).toFixed(3); }
+      continue;
     }
-  };
-}
-
-/* ============ Журнал ============ */
-function setView(v){
-  view = v;
-  [['days','viewDays'],['items','viewItems'],['clients','viewClients']].forEach(([k,id])=>$(id).setAttribute('aria-pressed', k===v));
-  render();
-}
-function filtered(){
-  const q = $('search').value.trim().toLowerCase(), p = $('period').value, t = todayISO();
-  let from = '';
-  if(p==='today') from = t;
-  else if(p==='month') from = t.slice(0,8)+'01';
-  else if(p!=='all') from = iso(Date.now()-(+p-1)*864e5);
-  const onlyDebt = mode==='sell' && $('onlyDebt').checked;
-  return store[mode].filter(it => (!q || it.name.toLowerCase().includes(q) || (it.buyer||'').toLowerCase().includes(q))
-    && (!from || it.date>=from) && (!onlyDebt || debtOf(it)>0));
-}
-function setSummary(pairs){ pairs.forEach(([l,v,cls],i)=>{ $('s'+(i+1)+'l').textContent=l; const el=$('s'+(i+1)); el.textContent=v; el.className='v'+(cls?' '+cls:''); }); }
-function payCell(s){
-  const d = debtOf(s);
-  return d>0 ? `<button class="chip debt" data-pay="${s.id}">долг ${fmt(d)}</button>` : `<span class="chip ok">оплачено</span>`;
-}
-function render(){
-  const list = filtered();
-  const days = [...new Set(list.map(i=>i.date))].sort().reverse();
-  const sum = list.reduce((s,i)=>s+i.total,0);
-  if(mode==='buy') setSummary([['Потрачено',fmt(sum)],['Позиций',list.length],['Дней',days.length]]);
-  else { const debt = list.reduce((s,i)=>s+debtOf(i),0);
-    setSummary([['Выручка',fmt(sum)],['Получено',fmt(sum-debt)],['Долги',fmt(debt), debt>0?'debt':'']]); }
-  const log = $('log');
-  if(!store[mode].length){
-    log.innerHTML = mode==='buy'
-      ? '<div class="empty"><b>Пока ничего не записано</b>Нажмите на микрофон и скажите, например: «апельсин 20 кг по 90».</div>'
-      : '<div class="empty"><b>Продаж пока нет</b>Нажмите на микрофон и скажите, например: «продал Гоге апельсин 5 кг по 120, в долг».</div>';
-    return;
+    if (k.t==="ili"){ cur.lastIli = true; continue; }
+    if (k.t==="po"||k.t==="na") continue;
+    if (k.t==="word"){
+      if (STOP.has(k.w)) continue;
+      if (cur.qtys.length && cur.words.length) push();   // "апельсины 100 кг мандарины ..." without price
+      cur.words.push(k.w);
+    }
   }
-  if(!list.length){ log.innerHTML = '<div class="empty"><b>Ничего не найдено</b>Измените поиск или период.</div>'; return; }
-  if(view==='days'){
-    log.innerHTML = days.map(d=>{
-      const rows = list.filter(i=>i.date===d).sort((a,b)=>a.ts-b.ts);
-      const daySum = rows.reduce((s,i)=>s+i.total,0);
-      return `<div class="day"><div class="day-h"><span class="d">${esc(dateLabel(d))}</span><span class="num">${fmt(daySum)}</span></div>
-      <div class="scroll"><table><thead><tr><th>Товар</th><th class="r">Кол-во</th><th class="r">Цена</th><th class="r">Сумма</th><th></th></tr></thead><tbody>
-      ${rows.map(i=>`<tr><td>${esc(i.name)}${mode==='sell' ? `<div class="sub"><span>${esc(i.buyer||'без имени')}</span>${payCell(i)}</div>` : ''}</td>
-        <td class="r num">${fmtQ(i.qty)} <span class="qty-unit">${esc(i.unit)}</span></td>
-        <td class="r num">${fmt(i.price)}</td><td class="r num">${fmt(i.total)}</td>
-        <td class="r"><button class="del" data-del="${i.id}" aria-label="Удалить ${esc(i.name)}">✕</button></td></tr>`).join('')}
-      </tbody></table></div></div>`;
-    }).join('');
-  } else if(view==='items'){
-    const g = {};
-    list.forEach(i=>{ const k=i.name.toLowerCase()+'|'+i.unit; (g[k] ||= {name:i.name,unit:i.unit,qty:0,total:0,n:0,last:'',min:Infinity,max:0});
-      const x=g[k]; x.qty+=i.qty; x.total+=i.total; x.n++; if(i.date>x.last) x.last=i.date; x.min=Math.min(x.min,i.price); x.max=Math.max(x.max,i.price); });
-    const rows = Object.values(g).sort((a,b)=>b.total-a.total);
-    log.innerHTML = `<div class="scroll"><table><thead><tr><th>Товар</th><th class="r">${mode==='buy'?'Куплено':'Продано'}</th><th class="r">Ср. цена</th><th class="r">Цена от–до</th><th class="r">${mode==='buy'?'Потрачено':'Выручка'}</th><th class="r">Последняя</th></tr></thead><tbody>
-      ${rows.map(x=>`<tr><td>${esc(x.name)} <span class="qty-unit">· ${x.n} раз</span></td><td class="r num">${fmtQ(x.qty)} <span class="qty-unit">${esc(x.unit)}</span></td>
-      <td class="r num">${fmt(x.qty? x.total/x.qty : 0)}</td><td class="r num">${x.min===x.max?fmt(x.min):fmt(x.min)+'–'+fmt(x.max)}</td>
-      <td class="r num">${fmt(x.total)}</td><td class="r muted">${new Date(x.last+'T00:00:00').toLocaleDateString('ru-RU')}</td></tr>`).join('')}
-      </tbody></table></div>`;
-  } else {
-    const g = {};
-    list.forEach(i=>{ const name = i.buyer || 'Без имени', k = name.toLowerCase(); (g[k] ||= {name,total:0,debt:0,n:0,last:''});
-      const x=g[k]; x.total+=i.total; x.debt+=debtOf(i); x.n++; if(i.date>x.last) x.last=i.date; });
-    const rows = Object.values(g).sort((a,b)=>b.debt-a.debt || b.total-a.total);
-    log.innerHTML = `<div class="scroll"><table><thead><tr><th>Клиент</th><th class="r">Купил на</th><th class="r">Оплатил</th><th class="r">Долг</th></tr></thead><tbody>
-      ${rows.map(x=>`<tr><td>${esc(x.name)}<div class="sub">${x.n} поз. · ${new Date(x.last+'T00:00:00').toLocaleDateString('ru-RU')}</div>
-          ${x.debt>0 && x.name!=='Без имени' ? `<div class="sub"><button class="chip debt" data-payclient="${esc(x.name)}">погасить долг</button></div>` : ''}</td>
-        <td class="r num">${fmt(x.total)}</td><td class="r num">${fmt(x.total-x.debt)}</td>
-        <td class="r num" style="${x.debt>0?'color:var(--warn);font-weight:600':''}">${fmt(x.debt)}</td></tr>`).join('')}
-      </tbody></table></div>`;
-  }
+  push();
+  return items.map(it=>({...it, sum: it.price==null ? 0 : round2(it.qty*it.price)}));
 }
+function round2(n){ return Math.round(n*100)/100; }
+function fmtNum(n){ return (+n).toLocaleString("ru-RU",{maximumFractionDigits:3}); }
+// PARSER END
 
-/* удаление и оплата долга */
-$('log').addEventListener('click', e=>{
-  const pay = e.target.closest('[data-pay]');
-  if(pay){ const s = store.sell.find(x=>x.id===pay.dataset.pay); if(s) openPay({title:`Оплата: ${s.name}`, info:`${s.buyer||'Без имени'} должен ${fmt(debtOf(s))}`, max:debtOf(s), apply:a=>{ s.paid = r2((s.paid||0)+a); }}); return; }
-  const pc = e.target.closest('[data-payclient]');
-  if(pc){
-    const name = pc.dataset.payclient, low = name.toLowerCase();
-    const rows = store.sell.filter(s=>(s.buyer||'').toLowerCase()===low && debtOf(s)>0).sort((a,b)=>a.date.localeCompare(b.date)||a.ts-b.ts);
-    const total = rows.reduce((s,r)=>s+debtOf(r),0);
-    openPay({title:`Оплата от: ${name}`, info:`Общий долг ${fmt(total)}. Оплата закроет сначала самые старые долги.`, max:total,
-      apply:a=>{ for(const r of rows){ if(a<=0) break; const p = Math.min(debtOf(r), a); r.paid = r2((r.paid||0)+p); a = r2(a-p); } }});
-    return;
-  }
-  const b = e.target.closest('[data-del]'); if(!b) return;
-  if(!b.classList.contains('confirm')){ b.classList.add('confirm'); b.textContent='Удалить?'; setTimeout(()=>{ if(b.isConnected){ b.classList.remove('confirm'); b.textContent='✕'; } },3000); return; }
-  const m = mode, idx = store[m].findIndex(i=>i.id===b.dataset.del); if(idx<0) return;
-  const [gone] = store[m].splice(idx,1); save(m); render();
-  toast(`Удалено: ${gone.name}`, ()=>{ store[m].splice(idx,0,gone); save(m); render(); });
-});
-let payCtx = null;
-function openPay(ctx){
-  payCtx = ctx; $('payTitle').textContent = ctx.title; $('payInfo').textContent = ctx.info;
-  $('payInput').value = fmt(ctx.max).replace(/\s/g,''); $('payModal').hidden = false; $('payInput').select();
+const fmtMoney = n => (+n||0).toLocaleString("ru-RU",{maximumFractionDigits:2}) + " грн";
+const $ = s=>document.querySelector(s);
+const esc = s => String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const UNITS = ["кг","шт","ящ","пуч","кор","меш","пач","уп"];
+const TYPE = {buy:{many:"Закупки",what:"Что купили",tot:"Итого к оплате",spent:"Потрачено"}, sell:{many:"Продажи",what:"Что продали",tot:"Итого к получению",spent:"Продано на"}};
+const EXAMPLE = "купил апельсины 100 кг или 10 ящиков по 90 грн мандарины 50 кг или 5 ящиков по 130 грн перец 10 кг 500 грамм или 10 с половиной килограмм по 20 манго 5 ящиков или 30 штук по 80";
+
+/* dates */
+const pad = n=>String(n).padStart(2,"0");
+const dstr = d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+const dparse = s=>{const [y,m,d]=s.split("-").map(Number); return new Date(y,m-1,d);};
+const today = ()=>dstr(new Date());
+function range(kind, anchor){
+  const d = dparse(anchor);
+  if (kind==="day") return [anchor, anchor];
+  if (kind==="week"){ const wd=(d.getDay()+6)%7; const a=new Date(d); a.setDate(d.getDate()-wd); const b=new Date(a); b.setDate(a.getDate()+6); return [dstr(a),dstr(b)]; }
+  return [dstr(new Date(d.getFullYear(),d.getMonth(),1)), dstr(new Date(d.getFullYear(),d.getMonth()+1,0))];
 }
-function closePay(){ $('payModal').hidden = true; payCtx = null; }
-$('payCancel').onclick = closePay;
-$('payModal').addEventListener('click', e=>{ if(e.target.id==='payModal') closePay(); });
-document.addEventListener('keydown', e=>{ if(e.key==='Escape' && !$('payModal').hidden) closePay(); });
-$('payForm').onsubmit = e=>{
-  e.preventDefault();
-  const a = num($('payInput').value.replace(/\s/g,''));
-  if(!(a>0)){ toast('Введите сумму больше нуля'); return; }
-  const amt = Math.min(a, payCtx.max);
-  payCtx.apply(amt); save('sell'); closePay(); render();
-  toast(a > amt ? `Принято ${fmt(amt)} — долг закрыт полностью` : `Принято ${fmt(amt)}`);
-};
-
-$('search').oninput = render; $('period').onchange = render; $('onlyDebt').onchange = render;
-$('viewDays').onclick = ()=> setView('days');
-$('viewItems').onclick = ()=> setView('items');
-$('viewClients').onclick = ()=> setView('clients');
-
-/* ============ Экспорт / импорт ============ */
-function download(name, text, type){
-  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text],{type})); a.download = name;
-  document.body.append(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href), 2000);
+const MON = ["янв","фев","мар","апр","мая","июн","июл","авг","сен","окт","ноя","дек"];
+const MONF = ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
+const DOW = ["вс","пн","вт","ср","чт","пт","сб"];
+function rangeLabel(kind,[a,b]){
+  const A=dparse(a),B=dparse(b);
+  if (kind==="day") return (a===today()?"Сегодня, ":DOW[A.getDay()]+", ")+A.getDate()+" "+MON[A.getMonth()];
+  if (kind==="week") return A.getDate()+" "+MON[A.getMonth()]+" – "+B.getDate()+" "+MON[B.getMonth()];
+  return MONF[A.getMonth()]+" "+A.getFullYear();
 }
-$('exportCsv').onclick = ()=>{
-  const n = x => String(r2(x)).replace('.',','), q = s => '"'+String(s||'').replace(/"/g,'""')+'"';
-  const rows = [...filtered()].sort((a,b)=>a.date.localeCompare(b.date)||a.ts-b.ts);
-  const lines = mode==='buy'
-    ? [['Дата','Товар','Количество','Ед.','Цена','Сумма'].join(';')].concat(rows.map(i=>[i.date,q(i.name),n(i.qty),i.unit,n(i.price),n(i.total)].join(';')))
-    : [['Дата','Покупатель','Товар','Количество','Ед.','Цена','Сумма','Оплачено','Долг'].join(';')].concat(rows.map(i=>[i.date,q(i.buyer),q(i.name),n(i.qty),i.unit,n(i.price),n(i.total),n(i.paid||0),n(debtOf(i))].join(';')));
-  download(`${mode==='buy'?'закупки':'продажи'}-${todayISO()}.csv`, '﻿'+lines.join('\r\n'), 'text/csv;charset=utf-8');
-};
-$('exportJson').onclick = ()=> download(`склад-копия-${todayISO()}.json`, JSON.stringify({app:'sklad', version:2, buy:store.buy, sell:store.sell},null,1), 'application/json');
-$('importJson').onclick = ()=> $('importFile').click();
-$('importFile').onchange = async e=>{
-  const f = e.target.files[0]; if(!f) return;
+function shift(kind, anchor, dir){
+  const d=dparse(anchor);
+  if (kind==="day") d.setDate(d.getDate()+dir);
+  else if (kind==="week") d.setDate(d.getDate()+7*dir);
+  else { d.setDate(1); d.setMonth(d.getMonth()+dir); }
+  return dstr(d);
+}
+function plural(n,a,b,c){ const m=n%10,h=n%100; return m===1&&h!==11?a:(m>=2&&m<=4&&(h<12||h>14)?b:c); }
+
+/* storage */
+let records = [], col = null, mode = "loading";
+const LS = "golos-kassa-records";
+function lsLoad(){ try{ return JSON.parse(localStorage.getItem(LS)||"[]"); }catch(e){ return []; } }
+function lsSave(){ try{ localStorage.setItem(LS, JSON.stringify(records)); }catch(e){} }
+const ready = (async()=>{
+  await null;
+  mode = "local"; records = lsLoad(); migrateOld();
+  $("#store").textContent = "сохраняется на этом телефоне";
+  renderStats();
+})();
+// перенос записей из прошлой версии «Голосовой склад» (sklad.v1 / sklad.sales.v1)
+function migrateOld(){
   try{
-    const data = JSON.parse(await f.text());
-    const parts = Array.isArray(data) ? {buy:data} : {buy:data.buy||[], sell:data.sell||[]};
-    if(!Array.isArray(parts.buy)) throw 0;
-    let added = 0;
-    for(const m of ['buy','sell']){
-      if(!parts[m]) continue;
-      const have = new Set(store[m].map(i=>i.id));
-      parts[m].forEach(d=>{ if(d && d.id && d.name && !have.has(d.id)){ store[m].push(d); added++; } });
-      save(m);
-    }
-    render(); toast(`Добавлено из копии: ${added}`);
-  }catch(err){ toast('Это не файл резервной копии склада'); }
-  e.target.value='';
-};
-
-/* ============ Старт ============ */
-$('opDate').value = todayISO();
-load();
-let startMode = 'buy'; try{ if(localStorage.getItem('sklad.mode')==='sell') startMode = 'sell'; }catch(e){}
-setMode(startMode);
-// офлайн-режим и установка на главный экран (работает только по https)
-if('serviceWorker' in navigator && (location.protocol==='https:' || location.hostname==='localhost')){
-  navigator.serviceWorker.register('sw.js').catch(()=>{});
+    if (localStorage.getItem("golos-kassa-migrated")) return;
+    const groups = {};
+    [["buy","sklad.v1"],["sell","sklad.sales.v1"]].forEach(([type,key])=>{
+      (JSON.parse(localStorage.getItem(key)||"[]")||[]).forEach(r=>{
+        const g = type+"|"+r.date+"|"+(r.check||r.ts||r.id);
+        const rec = groups[g] = groups[g] || {id:"old-"+type+"-"+(r.check||r.ts||r.id), type, date:r.date, ts:r.ts||0, text:"", lines:[], total:0};
+        if (r.buyer) rec.buyer = r.buyer;
+        if (r.paid!=null) rec.paid = r.paid;
+        const sum = round2(+r.total||(+r.qty||0)*(+r.price||0));
+        rec.lines.push({name:r.name||"Товар", qty:+r.qty||0, unit:r.unit||"кг", price:+r.price||0, sum, alt:""});
+        rec.total = round2(rec.total+sum);
+      });
+    });
+    const add = Object.values(groups).filter(g=>g.date);
+    if (add.length){ records = records.concat(add); lsSave(); }
+    localStorage.setItem("golos-kassa-migrated","1");
+  }catch(e){}
 }
-// просим браузер не стирать записи при нехватке места
-try{ navigator.storage?.persist?.(); }catch(e){}
+async function saveRecord(rec){
+  await ready;
+  if (mode==="cloud") await col.add(rec);
+  else { rec.id = "r"+Date.now()+Math.random().toString(36).slice(2,6); records.push(rec); lsSave(); renderStats(); }
+}
+async function deleteRecord(id){
+  await ready;
+  if (mode==="cloud") await col.doc(id).delete();
+  else { records = records.filter(r=>r.id!==id); lsSave(); renderStats(); }
+}
+function sumOf(type,[a,b]){ let s=0,n=0; for (const r of records) if (r.type===type && r.date>=a && r.date<=b){ s+=+r.total||0; n++; } return {s:round2(s),n}; }
+function toast(msg){ const t=$("#toast"); t.textContent=msg; t.hidden=false; clearTimeout(toast.t); toast.t=setTimeout(()=>t.hidden=true,2600); }
+
+/* record view */
+const st = {type:"buy", buy:{text:"",lines:[],example:false,date:today()}, sell:{text:"",lines:[],example:false,date:today()}};
+const cur = ()=>st[st.type];
+const ta = $("#text");
+function setMode(type){
+  cur().text = ta.value; cur().date = $("#date").value || today();
+  st.type = type;
+  ta.value = cur().text; $("#date").value = cur().date;
+  $("#view-rec").className = "wrap mode-"+type;
+  $("#savebar").className = "savebar pad mode-"+type;
+  document.querySelectorAll("#mode button").forEach(b=>b.setAttribute("aria-pressed", b.dataset.v===type));
+  $("#moderow").textContent = TYPE[type].what;
+  $("#totlbl").textContent = TYPE[type].tot;
+  ta.placeholder = (type==="buy"?"купил":"продал")+" апельсины 100 кг по 90, манго 30 штук по 80";
+  renderLines(); renderTiles($("#tiles"), type, today());
+}
+document.querySelectorAll("#mode button").forEach(b=>b.onclick=()=>setMode(b.dataset.v));
+ta.addEventListener("input", ()=>{ cur().example=false; reparse(); });
+$("#clear").onclick = ()=>{ ta.value=""; cur().example=false; reparse(); ta.focus(); };
+$("#add").onclick = ()=>{ cur().lines.push({name:"",qty:1,unit:"кг",price:null,sum:0,alt:""}); cur().example=false; renderLines(); };
+$("#save").onclick = async()=>{
+  const s = cur(), type = st.type;
+  const lines = s.lines.filter(l=>l.name||l.sum);
+  if (!lines.length){ toast("Нечего сохранять"); return; }
+  if (lines.some(l=>l.price==null)){ toast("Укажите цену в красных строках"); return; }
+  const total = round2(lines.reduce((a,l)=>a+l.sum,0));
+  const rec = {type, date: $("#date").value || today(), ts: Date.now(), text: ta.value.trim(),
+    lines: lines.map(l=>({name:l.name||"Товар",qty:+l.qty,unit:l.unit,price:+l.price,sum:l.sum,alt:l.alt||""})), total};
+  const btn = $("#save"); btn.disabled = true;
+  try { await saveRecord(rec); ta.value=""; s.example=false; reparse(); toast("Сохранено: "+fmtMoney(total)); }
+  catch(e){ toast("Не удалось сохранить: "+(e&&e.message||"ошибка")); }
+  finally { btn.disabled = false; }
+};
+function reparse(){ cur().lines = parseText(ta.value); renderLines(); }
+function renderLines(){
+  const s = cur(), box = $("#lines");
+  $("#ex").hidden = !s.example;
+  if (!s.lines.length) box.innerHTML = `<div class="empty">Нажмите на микрофон и скажите товар, количество и цену.<br>Например: «${st.type==="buy"?"купил":"продал"} лимоны 20 кг по 60».</div>`;
+  else box.innerHTML = s.lines.map((l,i)=>`
+    <div class="line ${l.price==null?"warn":""}" data-i="${i}">
+      <div class="top"><input class="name" data-f="name" value="${esc(l.name)}" aria-label="Товар" placeholder="Товар">
+        <button type="button" class="x" data-del="${i}" aria-label="Удалить строку">×</button></div>
+      <div class="calc">
+        <input class="q num" data-f="qty" inputmode="decimal" value="${l.qty}" aria-label="Количество">
+        <select data-f="unit" aria-label="Единица">${UNITS.map(u=>`<option${u===l.unit?" selected":""}>${u}</option>`).join("")}</select>
+        <span class="muted">×</span>
+        <input class="p num" data-f="price" inputmode="decimal" value="${l.price??""}" placeholder="цена" aria-label="Цена">
+      </div>
+      <div class="bottom"><span class="alt">${l.alt?"или "+esc(l.alt):""}</span><span class="sum" data-sum>${l.price==null?"нет цены":fmtMoney(l.sum)}</span></div>
+    </div>`).join("");
+  box.querySelectorAll("[data-f]").forEach(inp=>inp.addEventListener("input", ()=>{
+    const row = inp.closest(".line"), l = s.lines[+row.dataset.i], f = inp.dataset.f;
+    s.example = false; $("#ex").hidden = true;
+    if (f==="name"||f==="unit") l[f] = inp.value;
+    else { const n = parseFloat(inp.value.replace(",",".")); l[f] = isNaN(n) ? (f==="price"?null:0) : n; }
+    l.sum = l.price==null ? 0 : round2(l.qty*l.price);
+    row.classList.toggle("warn", l.price==null);
+    row.querySelector("[data-sum]").textContent = l.price==null ? "нет цены" : fmtMoney(l.sum);
+    updateTotal();
+  }));
+  box.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{ s.lines.splice(+b.dataset.del,1); renderLines(); });
+  updateTotal();
+}
+function updateTotal(){ $("#total").textContent = fmtMoney(cur().lines.reduce((a,l)=>a+(l.sum||0),0)); }
+function renderTiles(el, type, anchor){
+  el.innerHTML = [["day",anchor===today()?"Сегодня":"День"],["week","Неделя"],["month","Месяц"]].map(([k,lbl])=>{
+    const r = sumOf(type, range(k, anchor));
+    return `<div class="tile"><div class="lbl">${lbl}</div><div class="val">${fmtMoney(r.s)}</div><div class="cnt">${r.n} ${plural(r.n,"запись","записи","записей")}</div></div>`;
+  }).join("");
+}
+
+/* voice */
+(function(){
+  const btn = $("#mic"), hint = $("#hint"), lbl = $("#miclbl");
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let rec = null, on = false, base = "";
+  const keyboardHint = ()=>{
+    hint.hidden = false;
+    hint.innerHTML = "Браузер не дал доступ к микрофону. Нажмите на поле ниже, затем на <b>🎤 на клавиатуре iPhone</b> (справа внизу) и говорите — расчёт появится сразу.";
+    ta.focus();
+  };
+  const stop = ()=>{ on=false; btn.classList.remove("on"); lbl.textContent="Нажмите и говорите"; };
+  btn.onclick = ()=>{
+    if (!SR){ keyboardHint(); return; }
+    if (on){ try{ rec.stop(); }catch(e){} stop(); return; }
+    rec = new SR(); rec.lang = "ru-RU"; rec.continuous = true; rec.interimResults = true;
+    base = ta.value ? ta.value.trim()+" " : "";
+    rec.onresult = e=>{ let t=""; for (let i=0;i<e.results.length;i++) t += e.results[i][0].transcript+" "; ta.value = base+t.trim(); cur().example=false; reparse(); };
+    rec.onerror = e=>{ stop(); if (["not-allowed","service-not-allowed","audio-capture"].includes(e.error)) keyboardHint(); else if (e.error!=="no-speech"&&e.error!=="aborted") toast("Распознавание: "+e.error); };
+    rec.onend = stop;
+    try { rec.start(); on=true; btn.classList.add("on"); lbl.textContent="Слушаю… нажмите, чтобы закончить"; hint.hidden=true; }
+    catch(e){ stop(); keyboardHint(); }
+  };
+})();
+
+/* history */
+const H = {type:"buy", period:"day", anchor: today()};
+function periodRecords(type){ const [a,b]=range(H.period,H.anchor); return records.filter(r=>r.type===type && r.date>=a && r.date<=b).sort((x,y)=>x.date<y.date?1:x.date>y.date?-1:(y.ts||0)-(x.ts||0)); }
+function renderHistory(){
+  document.querySelectorAll("#h-type button").forEach(b=>b.setAttribute("aria-pressed", b.dataset.v===H.type));
+  document.querySelectorAll("#h-period button").forEach(b=>b.setAttribute("aria-pressed", b.dataset.v===H.period));
+  renderTiles($("#h-tiles"), H.type, H.anchor);
+  const rg = range(H.period,H.anchor);
+  $("#h-label").textContent = rangeLabel(H.period, rg);
+  const b = sumOf("buy",rg).s, s = sumOf("sell",rg).s;
+  $("#h-tlabel").textContent = TYPE[H.type].spent;
+  $("#h-total").textContent = fmtMoney(H.type==="buy"?b:s);
+  $("#h-cmp").innerHTML = `<div><span class="dot buy"></span>Закупки<b>${fmtMoney(b)}</b></div><div><span class="dot sell"></span>Продажи<b>${fmtMoney(s)}</b></div><div>Разница<b>${fmtMoney(round2(s-b))}</b></div>`;
+  const list = periodRecords(H.type);
+  if (!list.length) $("#h-list").innerHTML = `<div class="empty">${TYPE[H.type].many} за этот период не записаны.</div>`;
+  else {
+    const byDay = {}; list.forEach(r=>(byDay[r.date]=byDay[r.date]||[]).push(r));
+    $("#h-list").innerHTML = Object.keys(byDay).sort().reverse().map(d=>{
+      const rs = byDay[d], D = dparse(d), tot = round2(rs.reduce((a,r)=>a+(+r.total||0),0));
+      return `<div class="day"><div class="dayhead"><span>${DOW[D.getDay()]}, ${D.getDate()} ${MON[D.getMonth()]}</span><span class="num">${fmtMoney(tot)}</span></div>
+        ${rs.map(r=>`<div class="rec" data-id="${esc(r.id)}">
+          <div class="top"><span class="muted small">${r.buyer?esc(r.buyer)+" · ":""}${r.paid===false?"долг · ":""}${r.ts?new Date(r.ts).toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"}):""}</span>
+            <span style="display:flex;gap:8px;align-items:center"><b class="num">${fmtMoney(r.total)}</b><button type="button" class="x" data-askdel aria-label="Удалить запись">×</button></span></div>
+          <ul>${(r.lines||[]).map(l=>`<li><span>${esc(l.name)} · ${fmtNum(l.qty)} ${esc(l.unit)} × ${fmtNum(l.price)}</span><span>${fmtMoney(l.sum)}</span></li>`).join("")}</ul>
+          <div class="confirm" data-confirm hidden>Удалить запись? <button type="button" class="chip danger" data-yes>Удалить</button><button type="button" class="chip" data-no>Отмена</button></div>
+        </div>`).join("")}</div>`;
+    }).join("");
+    $("#h-list").querySelectorAll(".rec").forEach(el=>{
+      const c = el.querySelector("[data-confirm]");
+      el.querySelector("[data-askdel]").onclick = ()=>c.hidden=false;
+      el.querySelector("[data-no]").onclick = ()=>c.hidden=true;
+      el.querySelector("[data-yes]").onclick = async()=>{ try{ await deleteRecord(el.dataset.id); toast("Запись удалена"); }catch(e){ toast("Не удалось удалить"); } };
+    });
+  }
+  const agg = aggregate(list);
+  $("#h-items").innerHTML = agg.length ? `<table><thead><tr><th>Товар</th><th class="r">Кол-во</th><th class="r">Ср. цена</th><th class="r">Сумма</th></tr></thead><tbody>
+    ${agg.map(a=>`<tr><td>${esc(a.name)}</td><td class="r">${fmtNum(a.qty)} ${esc(a.unit)}</td><td class="r">${fmtNum(round2(a.sum/(a.qty||1)))}</td><td class="r">${fmtMoney(a.sum)}</td></tr>`).join("")}
+    </tbody></table>` : `<div class="empty">Пока пусто.</div>`;
+}
+function aggregate(list){
+  const m = new Map();
+  list.forEach(r=>(r.lines||[]).forEach(l=>{
+    const key = (l.name||"").toLowerCase()+"|"+l.unit;
+    const a = m.get(key) || {name:l.name,unit:l.unit,qty:0,sum:0};
+    a.qty = +(a.qty + (+l.qty||0)).toFixed(3); a.sum = round2(a.sum + (+l.sum||0)); m.set(key,a);
+  }));
+  return [...m.values()].sort((a,b)=>b.sum-a.sum);
+}
+function tableRows(){
+  const list = periodRecords(H.type).slice().reverse();
+  const rows = [["Дата","Время","Товар","Кол-во","Ед.","Цена","Сумма","Ящики/другое"]];
+  list.forEach(r=>(r.lines||[]).forEach(l=>rows.push([r.date, r.ts?new Date(r.ts).toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"}):"", l.name, +l.qty, l.unit, +l.price, +l.sum, l.alt||""])));
+  rows.push([]); rows.push(["","","Итого","","","", round2(list.reduce((a,r)=>a+(+r.total||0),0)), ""]);
+  return rows;
+}
+$("#h-xlsx").onclick = async()=>{
+  const rg = range(H.period,H.anchor);
+  const name = `${TYPE[H.type].many}_${rg[0]===rg[1]?rg[0]:rg[0]+"_"+rg[1]}.xlsx`;
+  try{
+    if (!window.XLSX) throw {message:"нет библиотеки Excel"};
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(tableRows()); ws["!cols"]=[{wch:11},{wch:7},{wch:22},{wch:9},{wch:5},{wch:9},{wch:11},{wch:14}];
+    XLSX.utils.book_append_sheet(wb, ws, "Записи");
+    const ag = [["Товар","Кол-во","Ед.","Ср. цена","Сумма"]].concat(aggregate(periodRecords(H.type)).map(a=>[a.name,a.qty,a.unit,round2(a.sum/(a.qty||1)),a.sum]));
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(ag), "По товарам");
+    const buf = XLSX.write(wb,{type:"array",bookType:"xlsx"});
+    saveBlob(new Blob([buf],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}), name);
+  }catch(e){
+    if (e && e.code==="declined") return;
+    toast("Не получилось скачать: "+(e&&e.message||e&&e.code||"ошибка"));
+  }
+};
+$("#h-copy").onclick = async()=>{
+  const tsv = tableRows().map(r=>r.map(c=>typeof c==="number"?String(c).replace(".",","):c).join("\t")).join("\n");
+  try{ await navigator.clipboard.writeText(tsv); toast("Скопировано — вставьте в Excel или Заметки"); }
+  catch(e){ toast("Копирование не разрешено в этом окне"); }
+};
+document.querySelectorAll("#h-type button").forEach(b=>b.onclick=()=>{ H.type=b.dataset.v; renderHistory(); });
+document.querySelectorAll("#h-period button").forEach(b=>b.onclick=()=>{ H.period=b.dataset.v; renderHistory(); });
+$("#h-prev").onclick = ()=>{ H.anchor = shift(H.period,H.anchor,-1); renderHistory(); };
+$("#h-next").onclick = ()=>{ H.anchor = shift(H.period,H.anchor,1); renderHistory(); };
+
+function saveBlob(blob, name){
+  const f = (window.File && navigator.canShare) ? new File([blob], name, {type: blob.type}) : null;
+  if (f && navigator.canShare({files:[f]}) && /iPhone|iPad|Android/i.test(navigator.userAgent)){
+    navigator.share({files:[f], title:name}).then(()=>toast("Готово: "+name)).catch(()=>{});
+    return;
+  }
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+  toast("Файл сохранён: "+name);
+}
+/* tabs */
+function showTab(tab){
+  document.querySelectorAll(".tabbar button").forEach(b=>b.setAttribute("aria-selected", b.dataset.tab===tab));
+  $("#view-rec").hidden = tab!=="rec"; $("#view-hist").hidden = tab!=="hist"; $("#savebar").hidden = tab!=="rec";
+  try{ localStorage.setItem("golos-kassa-tab", tab); }catch(e){}
+  window.scrollTo(0,0);
+}
+document.querySelectorAll(".tabbar button").forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
+function renderStats(){ renderTiles($("#tiles"), st.type, today()); renderHistory(); }
+
+$("#date").value = today();
+st.buy.text = EXAMPLE; st.buy.example = true; st.buy.lines = parseText(EXAMPLE);
+ta.value = EXAMPLE;
+setMode("buy");
+renderStats();
+try{ if (localStorage.getItem("golos-kassa-tab")==="hist") showTab("hist"); }catch(e){}
+if('serviceWorker' in navigator && location.protocol==='https:'){ navigator.serviceWorker.register('sw.js').catch(()=>{}); }
 </script>
-</body>
-</html>
+
+</body></html>
